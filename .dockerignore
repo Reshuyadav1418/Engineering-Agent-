@@ -1,0 +1,61 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Environment — NEVER ship this to the image
+.env
+.env.backup
+.env.production
+.env.*.local
+
+# Local dev tools
+.editorconfig
+.phpunit.result.cache
+.phpunit.cache
+phpunit.xml
+phpunit.xml.dist
+
+# IDE / Editor configs
+.idea
+.vscode
+.nova
+.zed
+.fleet
+*.swp
+*.swo
+
+# Node / npm
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Local build artefacts that Dockerfile recreates
+public/hot
+public/build
+
+# Laravel logs and storage (mounted as volume at runtime)
+storage/logs
+storage/framework/cache
+storage/framework/sessions
+storage/framework/views
+bootstrap/cache
+
+# Vendor (Composer installs inside the Docker build)
+vendor
+
+# Debug / test scripts not needed in production
+test.php
+debug_trend.php
+chart_replacer.py
+lightmode_replacer.py
+
+# Docker itself
+Dockerfile
+docker-compose.yml
+docker-compose.*.yml
+.dockerignore
+
+# Docs / extra files
+*.md
+scripts/

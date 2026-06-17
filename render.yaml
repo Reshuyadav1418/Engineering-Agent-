@@ -1,0 +1,78 @@
+services:
+  # ── Web Application ────────────────────────────────────────────────────────
+  - type: web
+    name: engineering-agent
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    # Render injects $PORT automatically — start.sh uses it
+    healthCheckPath: /up
+    autoDeploy: true
+
+    envVars:
+      - key: APP_NAME
+        value: EngineeringAgent
+      - key: APP_ENV
+        value: production
+      - key: APP_KEY
+        generateValue: true          # Render auto-generates a secure key
+      - key: APP_DEBUG
+        value: false
+      - key: APP_URL
+        value: https://engineering-agent.onrender.com   # ← change to your actual URL
+
+      # Database — linked from the Render PostgreSQL below
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        fromDatabase:
+          name: engineering-agent-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: engineering-agent-db
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: engineering-agent-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: engineering-agent-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: engineering-agent-db
+          property: password
+
+      # Session / Cache / Queue (all use DB — no Redis needed on free tier)
+      - key: SESSION_DRIVER
+        value: database
+      - key: CACHE_STORE
+        value: database
+      - key: QUEUE_CONNECTION
+        value: database
+
+      # Logging — must be stderr on Render (no writable log files)
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: LOG_LEVEL
+        value: error
+
+      # AI — Ollama not available on Render, app falls back to mock automatically
+      - key: AI_PROVIDER
+        value: ollama
+      - key: OLLAMA_ENDPOINT
+        value: http://localhost:11434
+      - key: OLLAMA_MODEL
+        value: llama3.2:1b
+
+      # GitHub — optional, leave empty for simulation mode
+      - key: GITHUB_TOKEN
+        value: ""
+
+# ── PostgreSQL Database ──────────────────────────────────────────────────────
+databases:
+  - name: engineering-agent-db
+    databaseName: engineering_agent
+    user: agent_user
+    plan: free

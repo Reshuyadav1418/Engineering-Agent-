@@ -1,0 +1,66 @@
+services:
+
+  # ── PostgreSQL Database ──────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: engineering_agent_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-engineering_agent}
+      POSTGRES_USER: ${DB_USERNAME:-agent_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-agent_user} -d ${DB_DATABASE:-engineering_agent}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Laravel Application ──────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: engineering_agent_app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    environment:
+      APP_NAME: ${APP_NAME:-EngineeringAgent}
+      APP_ENV: ${APP_ENV:-local}
+      APP_KEY: ${APP_KEY}
+      APP_DEBUG: ${APP_DEBUG:-true}
+      APP_URL: ${APP_URL:-http://localhost:8000}
+
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_DATABASE:-engineering_agent}
+      DB_USERNAME: ${DB_USERNAME:-agent_user}
+      DB_PASSWORD: ${DB_PASSWORD:-secret}
+
+      SESSION_DRIVER: database
+      CACHE_STORE: database
+      QUEUE_CONNECTION: database
+
+      LOG_CHANNEL: stderr
+      LOG_LEVEL: debug
+
+      AI_PROVIDER: ${AI_PROVIDER:-ollama}
+      OLLAMA_ENDPOINT: ${OLLAMA_ENDPOINT:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:1b}
+
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      # Mount storage so uploaded files persist across container restarts
+      - app_storage:/var/www/html/storage/app
+
+volumes:
+  pgdata:
+  app_storage:
