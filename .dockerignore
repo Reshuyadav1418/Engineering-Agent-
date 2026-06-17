@@ -58,4 +58,3 @@ docker-compose.*.yml
 
 # Docs / extra files
 *.md
-scripts/
