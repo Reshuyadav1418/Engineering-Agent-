@@ -1,5 +1,9 @@
 @extends('layouts.app')
 
+@php
+    $gitlabBaseUrl = rtrim(config('services.gitlab.url', 'https://gitlab.com'), '/');
+@endphp
+
 @section('content')
 <div class="page-container" x-data="vcsState()" x-init="init()">
 
@@ -200,7 +204,7 @@
                                     x-text="row.employee_name"></a>
                             </td>
                             <td style="padding:13px 16px;">
-                                <a :href="row.provider === 'github' ? 'https://github.com/' + row.git_username : (row.provider === 'gitlab' ? '{{ rtrim(config('services.gitlab.url', 'https://gitlab.com'), '/') }}/' + row.git_username : 'https://bitbucket.org/' + row.git_username)"
+                                <a :href="row.provider === 'github' ? 'https://github.com/' + row.git_username : (row.provider === 'gitlab' ? '{{ $gitlabBaseUrl }}/' + row.git_username : 'https://bitbucket.org/' + row.git_username)"
                                     target="_blank"
                                     style="font-size:12.5px; font-family:monospace; color:#ec4899; font-weight:500; text-decoration:none;"
                                     @mouseenter="$el.style.textDecoration = 'underline'"
