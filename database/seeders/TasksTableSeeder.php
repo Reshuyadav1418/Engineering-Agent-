@@ -13,8 +13,13 @@ class TasksTableSeeder extends Seeder
 {
     /**
      * Total tasks to seed.
+     * In production (Render) we use a small seed so the server starts fast.
+     * Locally you can override with SEED_TASK_COUNT=180000 in your .env.
      */
-    private const TARGET_COUNT = 180000;
+    private function targetCount(): int
+    {
+        return (int) env('SEED_TASK_COUNT', app()->isProduction() ? 500 : 5000);
+    }
 
     /**
      * Rows per DB::table('tasks')->insert() call.
@@ -31,7 +36,7 @@ class TasksTableSeeder extends Seeder
     /**
      * Run the task seeds.
      *
-     * Idempotent: if 180,000 or more tasks already exist the seeder is
+     * Idempotent: if target count or more tasks already exist the seeder is
      * skipped entirely, so `php artisan db:seed --force` is safe to repeat.
      *
      * Tasks are randomly distributed across all employees, with assigned_date
@@ -39,10 +44,12 @@ class TasksTableSeeder extends Seeder
      */
     public function run(): void
     {
+        $targetCount = $this->targetCount();
+
         // ── Idempotency guard ─────────────────────────────────────────────
-        if (Task::count() >= self::TARGET_COUNT) {
+        if (Task::count() >= $targetCount) {
             $this->command->info(
-                'Tasks already seeded (≥' . self::TARGET_COUNT . ') — skipping TasksTableSeeder.'
+                'Tasks already seeded (≥' . $targetCount . ') — skipping TasksTableSeeder.'
             );
             return;
         }
@@ -80,13 +87,13 @@ class TasksTableSeeder extends Seeder
         $descMax  = self::DESC_POOL  - 1;
         $empMax   = $empCount - 1;
 
-        // ── Bulk-insert in chunks of 5,000 ────────────────────────────────
-        $this->command->info('Seeding ' . self::TARGET_COUNT . ' tasks in chunks of ' . self::CHUNK_SIZE . '...');
+        // ── Bulk-insert in chunks ─────────────────────────────────────────
+        $this->command->info('Seeding ' . $targetCount . ' tasks in chunks of ' . self::CHUNK_SIZE . '...');
 
         $batch    = [];
         $inserted = 0;
 
-        for ($i = 0; $i < self::TARGET_COUNT; $i++) {
+        for ($i = 0; $i < $targetCount; $i++) {
             $status = $statuses[array_rand($statuses)];
 
             // Random assigned_date within June 1–18
@@ -120,8 +127,8 @@ class TasksTableSeeder extends Seeder
                 DB::table('tasks')->insert($batch);
                 $inserted += self::CHUNK_SIZE;
                 $batch     = [];
-                if ($inserted % 10000 === 0) {
-                    $this->command->info("  → {$inserted} / " . self::TARGET_COUNT . " tasks inserted...");
+                if ($inserted % 500 === 0) {
+                    $this->command->info("  → {$inserted} / {$targetCount} tasks inserted...");
                 }
             }
         }

@@ -6,8 +6,8 @@
 #   1. Ensure writable storage directories exist
 #   2. Cache config / routes / views
 #   3. Run migrations  (--force bypasses the production prompt)
-#   4. Run seeders     (idempotent — safe to run on every startup)
-#   5. Start Laravel's built-in server on 0.0.0.0:$PORT
+#   4. Start Laravel server immediately (so Render port scan succeeds)
+#   5. Run seeders in background (idempotent — safe to run on every startup)
 # ─────────────────────────────────────────────────────────────────────────────
 
 set -e
@@ -38,9 +38,6 @@ php artisan view:cache  2>/dev/null || true
 echo "==> Running database migrations..."
 php artisan migrate --force
 
-echo "==> Running database seeders..."
-php artisan db:seed --force
-
 echo "==> Creating storage symlink..."
 php artisan storage:link --force 2>/dev/null || true
 
@@ -48,4 +45,9 @@ php artisan storage:link --force 2>/dev/null || true
 PORT="${PORT:-8000}"
 
 echo "==> Starting Laravel server on 0.0.0.0:${PORT}..."
+echo "==> (Database seeding will run in the background after server starts)"
+
+# Run seeder in background AFTER server has had a moment to bind the port
+(sleep 5 && echo "==> Running database seeders in background..." && php artisan db:seed --force && echo "==> Seeding complete.") &
+
 exec php artisan serve --host=0.0.0.0 --port="${PORT}"
