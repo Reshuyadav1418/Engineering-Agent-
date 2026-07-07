@@ -35,8 +35,13 @@ echo "==> Caching views..."
 php artisan view:clear  2>/dev/null || true
 php artisan view:cache  2>/dev/null || true
 
-echo "==> Running database migrations..."
-php artisan migrate --force
+if [ "$MIGRATE_FRESH" = "true" ]; then
+    echo "==> MIGRATE_FRESH is true: Wiping database and running fresh migrations..."
+    php artisan migrate:fresh --force
+else
+    echo "==> Running database migrations..."
+    php artisan migrate --force
+fi
 
 echo "==> Creating storage symlink..."
 php artisan storage:link --force 2>/dev/null || true

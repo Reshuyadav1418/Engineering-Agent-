@@ -12,8 +12,13 @@ class EmployeesTableSeeder extends Seeder
 {
     /**
      * Total employees to seed.
+     * In production (Render) we use a small seed so the database is fast and responsive.
+     * Locally you can override with SEED_EMPLOYEE_COUNT=10000 in your .env.
      */
-    private const TARGET_COUNT = 10000;
+    private function targetCount(): int
+    {
+        return (int) env('SEED_EMPLOYEE_COUNT', app()->isProduction() ? 50 : 100);
+    }
 
     /**
      * Records per Employee::insert() batch.
@@ -35,10 +40,12 @@ class EmployeesTableSeeder extends Seeder
      */
     public function run(): void
     {
+        $targetCount = $this->targetCount();
+
         // ── Idempotency guard ─────────────────────────────────────────────
-        if (Employee::count() >= self::TARGET_COUNT) {
+        if (Employee::count() >= $targetCount) {
             $this->command->info(
-                'Employees already seeded (≥' . self::TARGET_COUNT . ') — skipping EmployeesTableSeeder.'
+                'Employees already seeded (≥' . $targetCount . ') — skipping EmployeesTableSeeder.'
             );
             return;
         }
@@ -47,11 +54,11 @@ class EmployeesTableSeeder extends Seeder
         $departments = ['Engineering', 'Marketing', 'HR', 'Sales', 'Support'];
         $now         = Carbon::now()->toDateTimeString();
 
-        // ── 1. Build & bulk-insert 10,000 employee rows ───────────────────
-        $this->command->info('Seeding ' . self::TARGET_COUNT . ' employees...');
+        // ── 1. Build & bulk-insert employee rows ──────────────────────────
+        $this->command->info('Seeding ' . $targetCount . ' employees...');
 
         $employees = [];
-        for ($i = 0; $i < self::TARGET_COUNT; $i++) {
+        for ($i = 0; $i < $targetCount; $i++) {
             $employees[] = [
                 'name'            => $faker->name,
                 'email'           => 'employee_' . ($i + 1) . '_' . $faker->unique()->numberBetween(10000, 99999) . '@seeddata.local',
@@ -69,7 +76,7 @@ class EmployeesTableSeeder extends Seeder
         }
         unset($employees); // free memory
 
-        $this->command->info(self::TARGET_COUNT . ' employees inserted.');
+        $this->command->info($targetCount . ' employees inserted.');
 
         // ── 2. Bulk-insert attendance & working hours ─────────────────────
         $this->command->info('Seeding attendance and working hours...');
@@ -143,7 +150,7 @@ class EmployeesTableSeeder extends Seeder
         }
 
         $this->command->info(
-            self::TARGET_COUNT . ' employees seeded with attendance and working hours.'
+            $targetCount . ' employees seeded with attendance and working hours.'
         );
     }
 }
