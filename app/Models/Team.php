@@ -36,4 +36,9 @@ class Team extends Model
     {
         return $this->hasMany(Task::class);
     }
+
+    public function aiReports(): HasMany
+    {
+        return $this->hasMany(AIReport::class);
+    }
 }

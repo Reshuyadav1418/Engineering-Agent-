@@ -13,6 +13,7 @@ class AIReport extends Model
 
     protected $fillable = [
         'employee_id',
+        'team_id',
         'summary',
         'strengths',
         'weaknesses',
@@ -30,5 +31,10 @@ class AIReport extends Model
     public function employee(): BelongsTo
     {
         return $this->belongsTo(Employee::class);
+    }
+
+    public function team(): BelongsTo
+    {
+        return $this->belongsTo(Team::class);
     }
 }

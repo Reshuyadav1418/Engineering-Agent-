@@ -12,4 +12,15 @@ interface AIAnalysisServiceInterface
         float $productivityScore,
         float $leadershipScore
     ): array;
+
+    public function generateTeamReport(
+        string $teamName,
+        int $membersCount,
+        int $completedTasks,
+        float $productivityScore,
+        float $leadershipScore,
+        float $completionRate,
+        float $consistencyScore,
+        float $collaborationScore
+    ): array;
 }

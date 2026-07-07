@@ -57,15 +57,35 @@
                 </div>
             </div>
 
-            {{-- GitHub Username --}}
-            <div>
-                <label for="github_username" class="form-label">GitHub Username <span style="color:#334155; font-weight:400; text-transform:none; letter-spacing:0;">(optional)</span></label>
-                <div style="position:relative;">
-                    <span style="position:absolute; left:14px; top:50%; transform:translateY(-50%); font-size:13px; color:var(--text-muted); font-weight:600; pointer-events:none; user-select:none; font-family:monospace;">github.com/</span>
-                    <input type="text" name="github_username" id="github_username" value="{{ old('github_username', $employee->github_username) }}"
-                        class="form-input" style="padding-left:108px;">
+            {{-- VCS Usernames --}}
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px;">
+                {{-- GitHub Username --}}
+                <div>
+                    <label for="github_username" class="form-label">GitHub Username <span style="color:#334155; font-weight:400; text-transform:none; letter-spacing:0;">(optional)</span></label>
+                    <div style="position:relative;">
+                        <span style="position:absolute; left:14px; top:50%; transform:translateY(-50%); font-size:13px; color:var(--text-muted); font-weight:600; pointer-events:none; user-select:none; font-family:monospace;">github.com/</span>
+                        <input type="text" name="github_username" id="github_username" value="{{ old('github_username', $employee->github_username) }}"
+                            class="form-input" style="padding-left:108px;">
+                    </div>
+                    @error('github_username')<p class="form-error">{{ $message }}</p>@enderror
                 </div>
-                @error('github_username')<p class="form-error">{{ $message }}</p>@enderror
+
+                {{-- GitLab Username --}}
+                @php
+                    $gitlabHost = parse_url(config('services.gitlab.url', 'https://gitlab.com'), PHP_URL_HOST) ?: 'gitlab.com';
+                    $gitlabPrefix = $gitlabHost . '/';
+                    $gitlabPadding = 14 + (strlen($gitlabPrefix) * 8.2);
+                @endphp
+                <div>
+                    <label for="gitlab_username" class="form-label">GitLab Username <span style="color:#334155; font-weight:400; text-transform:none; letter-spacing:0;">(optional)</span></label>
+                    <div style="position:relative;">
+                        <span style="position:absolute; left:14px; top:50%; transform:translateY(-50%); font-size:13px; color:var(--text-muted); font-weight:600; pointer-events:none; user-select:none; font-family:monospace;">{{ $gitlabPrefix }}</span>
+                        <input type="text" name="gitlab_username" id="gitlab_username" value="{{ old('gitlab_username', $employee->gitlab_username) }}"
+                            placeholder="Leave blank to use GitHub username as fallback"
+                            class="form-input" style="padding-left:{{ $gitlabPadding }}px;">
+                    </div>
+                    @error('gitlab_username')<p class="form-error">{{ $message }}</p>@enderror
+                </div>
             </div>
 
             <div class="divider" style="margin:4px 0;"></div>

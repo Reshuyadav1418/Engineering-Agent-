@@ -2,29 +2,126 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Employee;
 use App\Services\Contracts\LeadershipScoreServiceInterface;
+use App\Services\Contracts\MetricsServiceInterface;
+use App\Services\Contracts\TeamMetricsServiceInterface;
+use Carbon\Carbon;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class LeaderboardController extends Controller
 {
     protected LeadershipScoreServiceInterface $leadershipScoreService;
+    protected TeamMetricsServiceInterface $teamMetricsService;
+    protected MetricsServiceInterface $metricsService;
 
-    public function __construct(LeadershipScoreServiceInterface $leadershipScoreService)
-    {
+    public function __construct(
+        LeadershipScoreServiceInterface $leadershipScoreService,
+        TeamMetricsServiceInterface $teamMetricsService,
+        MetricsServiceInterface $metricsService
+    ) {
         $this->leadershipScoreService = $leadershipScoreService;
+        $this->teamMetricsService     = $teamMetricsService;
+        $this->metricsService         = $metricsService;
     }
 
     public function index(): View
     {
-        $leaderboard = $this->leadershipScoreService->getLatestLeaderboard();
+        $leaderboard     = $this->leadershipScoreService->getLatestLeaderboard(20);
+        $teamLeaderboard = $this->teamMetricsService->getTeamLeaderboard();
+        $period          = 'all';
+        $from            = null;
+        $to              = null;
+        $periodLabel     = 'All Time';
 
-        return view('leaderboard', compact('leaderboard'));
+        return view('leaderboard', compact('leaderboard', 'teamLeaderboard', 'period', 'from', 'to', 'periodLabel'));
+    }
+
+    /**
+     * Return leaderboard filtered to a specific time period.
+     * Scores are calculated in-memory — the stored all-time scores are NOT overwritten.
+     */
+    public function filtered(Request $request): View
+    {
+        // Lift the time limit — calculating scores for all employees can take a while
+        set_time_limit(300);
+
+        $period = $request->input('period', 'monthly');
+        [$from, $to, $periodLabel] = $this->resolveDateRange($period, $request);
+
+        // Eager-load ALL nested relations in ONE query set — no N+1 queries in the map()
+        $employees = Employee::with([
+            'tasks',
+            'taskMembers',
+            'taskMembers.task',
+            'teams',
+        ])->get();
+
+        $leaderboard = $employees->map(function (Employee $emp) use ($from, $to) {
+            $prod = $this->metricsService->calculateForPeriod($emp, $from, $to);
+            $lead = $this->leadershipScoreService->calculateOnDemand($emp, $prod, $from, $to);
+
+            return (object) [
+                'employee'           => $emp,
+                'productivity_score' => $prod,
+                'leadership_score'   => $lead,
+            ];
+        })
+        ->sortByDesc('leadership_score')
+        ->take(20)          // match the all-time limit of 20
+        ->values();
+
+        $teamLeaderboard = $this->teamMetricsService->getTeamLeaderboard();
+
+        return view('leaderboard', compact('leaderboard', 'teamLeaderboard', 'period', 'from', 'to', 'periodLabel'));
+    }
+
+    /**
+     * Resolve [Carbon $from, Carbon $to, string $label] from a period key.
+     */
+    protected function resolveDateRange(string $period, Request $request): array
+    {
+        $now = Carbon::now();
+
+        return match ($period) {
+            'daily'     => [
+                $now->copy()->startOfDay(),
+                $now->copy()->endOfDay(),
+                'Today — ' . $now->format('d M Y'),
+            ],
+            'weekly'    => [
+                $now->copy()->startOfWeek(),
+                $now->copy()->endOfWeek(),
+                'This Week (' . $now->copy()->startOfWeek()->format('d M') . ' – ' . $now->copy()->endOfWeek()->format('d M Y') . ')',
+            ],
+            'monthly'   => [
+                $now->copy()->startOfMonth(),
+                $now->copy()->endOfMonth(),
+                'This Month — ' . $now->format('F Y'),
+            ],
+            'quarterly' => [
+                $now->copy()->startOfQuarter(),
+                $now->copy()->endOfQuarter(),
+                'This Quarter (Q' . $now->quarter . ' ' . $now->year . ')',
+            ],
+            'yearly'    => [
+                $now->copy()->startOfYear(),
+                $now->copy()->endOfYear(),
+                'This Year — ' . $now->year,
+            ],
+            'custom'    => [
+                $request->filled('from') ? Carbon::parse($request->input('from'))->startOfDay() : null,
+                $request->filled('to')   ? Carbon::parse($request->input('to'))->endOfDay()   : null,
+                'Custom: ' . ($request->input('from') ?? '∞') . ' → ' . ($request->input('to') ?? '∞'),
+            ],
+            default     => [null, null, 'All Time'],
+        };
     }
 
     /**
      * Export the leaderboard as a downloadable CSV file.
-     * Streams directly to the browser — no temporary file needed.
      */
     public function export(): StreamedResponse
     {
@@ -74,4 +171,3 @@ class LeaderboardController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 }
-

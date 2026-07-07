@@ -41,4 +41,14 @@ class TaskService implements TaskServiceInterface
         $this->taskRepo->delete($id);
         return true;
     }
+
+    public function paginated(int $perPage = 20, ?string $selectedMonth = null): \Illuminate\Contracts\Pagination\LengthAwarePaginator
+    {
+        return $this->taskRepo->paginated($perPage, $selectedMonth);
+    }
+
+    public function getAvailableMonths(): \Illuminate\Support\Collection
+    {
+        return $this->taskRepo->getAvailableMonths();
+    }
 }

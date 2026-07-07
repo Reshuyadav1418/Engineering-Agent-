@@ -6,8 +6,7 @@ use App\Models\Employee;
 use Illuminate\Database\Eloquent\Collection;
 
 interface EmployeeRepositoryInterface
-{
-    /**
+{    /**
      * Get all employees.
      */
     public function all(): Collection;
@@ -31,11 +30,4 @@ interface EmployeeRepositoryInterface
      * Delete an employee.
      */
     public function delete(int $id): bool;
-
-    /**
-     * Search / filter employees.
-     *
-     * @param  array{name?:string, department?:string, role?:string, github_username?:string}  $filters
-     */
-    public function search(array $filters): Collection;
 }

@@ -10,11 +10,11 @@ class BitbucketIntegrationService
     /**
      * Sync Bitbucket metrics for a specific employee.
      */
-    public function sync(string $gitUsername, float $productivityScore): array
+    public function sync(string $gitUsername, float $productivityScore, bool $isFake = false): array
     {
         $token = env('BITBUCKET_TOKEN');
 
-        if ($token) {
+        if ($token && !$isFake) {
             try {
                 // Real API Mode
                 $response = Http::withHeaders([
@@ -33,6 +33,7 @@ class BitbucketIntegrationService
                     return [
                         'commits' => $commits,
                         'pull_requests' => $prs,
+                        'repositories' => mt_rand(3, 12),
                         'reviews' => $reviews,
                         'bugs_fixed' => $bugsFixed,
                         'deployments' => $deployments,
@@ -52,6 +53,7 @@ class BitbucketIntegrationService
 
         $commits = round($productivityScore * 4 + mt_rand(2, 8));
         $prs = round($productivityScore * 0.5 + mt_rand(0, 2));
+        $repos = mt_rand(3, 12);
         $reviews = round($productivityScore * 0.6 + mt_rand(0, 3));
         $bugsFixed = round($prs * 0.5 + mt_rand(0, 2));
         $deployments = round($prs * 0.4 + mt_rand(0, 1));
@@ -60,6 +62,7 @@ class BitbucketIntegrationService
         return [
             'commits' => max(0, $commits),
             'pull_requests' => max(0, $prs),
+            'repositories' => max(0, $repos),
             'reviews' => max(0, $reviews),
             'bugs_fixed' => max(0, $bugsFixed),
             'deployments' => max(0, $deployments),

@@ -12,4 +12,5 @@ interface MetricsServiceInterface
     public function calculateSpeedScore(Employee $employee): float;
     public function calculateConsistencyScore(Employee $employee): float;
     public function calculateTeamContribution(Employee $employee): float;
+    public function calculateForPeriod(Employee $employee, $from, $to): float;
 }

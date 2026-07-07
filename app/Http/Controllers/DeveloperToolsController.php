@@ -110,11 +110,12 @@ class DeveloperToolsController extends Controller
     public function submitEmployee(Request $request)
     {
         $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:employees,email',
-            'department' => 'required|string|max:255',
-            'role' => 'required|string|max:255',
+            'name'            => 'required|string|max:255',
+            'email'           => 'required|email|unique:employees,email',
+            'department'      => 'required|string|max:255',
+            'role'            => 'required|string|max:255',
             'github_username' => 'required|string|max:255',
+            'gitlab_username' => 'nullable|string|max:255',
         ]);
 
         $employee = Employee::create($data);
@@ -375,11 +376,12 @@ class DeveloperToolsController extends Controller
     public function apiPostEmployee(Request $request)
     {
         $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:employees,email',
-            'department' => 'required|string|max:255',
-            'role' => 'required|string|max:255',
+            'name'            => 'required|string|max:255',
+            'email'           => 'required|email|unique:employees,email',
+            'department'      => 'required|string|max:255',
+            'role'            => 'required|string|max:255',
             'github_username' => 'required|string|max:255',
+            'gitlab_username' => 'nullable|string|max:255',
         ]);
 
         $employee = Employee::create($data);

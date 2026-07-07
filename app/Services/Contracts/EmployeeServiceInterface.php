@@ -16,5 +16,5 @@ interface EmployeeServiceInterface
     /**
      * Search / filter employees by name, department, role, or github_username.
      */
-    public function search(array $filters): Collection;
+    public function search(array $filters, int $perPage = 20): \Illuminate\Contracts\Pagination\LengthAwarePaginator;
 }

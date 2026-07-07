@@ -35,7 +35,7 @@ class EmployeeRepository implements EmployeeRepositoryInterface
         return Employee::destroy($id) > 0;
     }
 
-    public function search(array $filters): Collection
+    public function search(array $filters, int $perPage = 20): \Illuminate\Contracts\Pagination\LengthAwarePaginator
     {
         $query = Employee::query();
 
@@ -51,7 +51,10 @@ class EmployeeRepository implements EmployeeRepositoryInterface
         if (!empty($filters['github_username'])) {
             $query->where('github_username', 'like', '%' . $filters['github_username'] . '%');
         }
+        if (!empty($filters['gitlab_username'])) {
+            $query->where('gitlab_username', 'like', '%' . $filters['gitlab_username'] . '%');
+        }
 
-        return $query->orderBy('name')->get();
+        return $query->orderBy('name')->paginate($perPage);
     }
 }

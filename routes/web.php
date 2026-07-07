@@ -24,16 +24,29 @@ Route::resource('tasks', TaskController::class);
 
 // Leaderboard
 Route::get('leaderboard', [LeaderboardController::class, 'index'])->name('leaderboard');
+Route::get('leaderboard/filter', [LeaderboardController::class, 'filtered'])->name('leaderboard.filtered');
 Route::get('leaderboard/export', [LeaderboardController::class, 'export'])->name('leaderboard.export');
 
+// AI reports
 // AI reports
 Route::get('engineering-agent/reports', [AIReportController::class, 'index'])->name('ai.report.index');
 Route::get('engineering-agent/report/{employee}', [AIReportController::class, 'show'])->name('ai.report.show');
 Route::post('engineering-agent/report/{employee}/generate', [AIReportController::class, 'generate'])->name('ai.report.generate');
+Route::get('engineering-agent/team-report/{team}', [AIReportController::class, 'showTeam'])->name('ai.report.show_team');
+Route::post('engineering-agent/team-report/{team}/generate', [AIReportController::class, 'generateTeam'])->name('ai.report.generate_team');
+Route::delete('engineering-agent/reports/{report}', [AIReportController::class, 'destroy'])->name('ai.report.destroy');
+
+// AI Chatbot
+use App\Http\Controllers\ChatController;
+Route::post('engineering-agent/chat', [ChatController::class, 'sendMessage'])->name('chat.send');
+Route::get('engineering-agent/chat/history', [ChatController::class, 'getHistory'])->name('chat.history');
 
 // VCS Integration
+use App\Http\Controllers\VcsReportController;
 Route::get('engineering-agent/vcs', [VCSController::class, 'index'])->name('vcs.index');
 Route::post('engineering-agent/vcs/sync', [VCSController::class, 'sync'])->name('vcs.sync');
+Route::get('engineering-agent/vcs/{employee}/analysis', [VcsReportController::class, 'show'])->name('vcs.analysis.show');
+Route::post('engineering-agent/vcs/{employee}/analysis/generate', [VcsReportController::class, 'generate'])->name('vcs.analysis.generate');
 
 // Developer Tools & Sandbox
 use App\Http\Controllers\DeveloperToolsController;

@@ -40,4 +40,10 @@ return [
         'token' => env('GITHUB_TOKEN'),
     ],
 
+    // GitLab Integration — token read via config() so it survives config:cache
+    'gitlab' => [
+        'token' => env('GITLAB_TOKEN'),
+        'url'   => env('GITLAB_URL', 'https://gitlab.com'),
+    ],
+
 ];

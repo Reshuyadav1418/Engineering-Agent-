@@ -72,16 +72,116 @@
             {{-- Individual Assignee --}}
             <div x-show="assignmentType === 'individual'" x-transition>
                 <label for="employee_id" class="form-label">Assigned Developer</label>
-                <select name="employee_id" id="employee_id" :required="assignmentType === 'individual'" class="form-input" style="cursor:pointer;">
-                    <option value="" disabled selected style="color:#000;">Select assignee…</option>
-                    @foreach($employees as $employee)
-                        <option value="{{ $employee->id }}" {{ old('employee_id') == $employee->id ? 'selected' : '' }} style="color:#000;">
-                            {{ $employee->name }} ({{ $employee->role }})
-                        </option>
-                    @endforeach
-                </select>
+                <div x-data="{
+                    open: false,
+                    search: '',
+                    debounceTimer: null,
+                    selectedId: '{{ old('employee_id') }}',
+                    selectedName: '',
+                    employees: [
+                        @foreach($employees as $employee)
+                            { id: '{{ $employee->id }}', name: '{{ addslashes($employee->name) }}', role: '{{ addslashes($employee->role) }}' },
+                        @endforeach
+                    ],
+                    get filteredEmployees() {
+                        if (!this.search) return this.employees.slice(0, 50);
+                        const q = this.search.toLowerCase();
+                        return this.employees.filter(emp =>
+                            emp.name.toLowerCase().includes(q) || emp.role.toLowerCase().includes(q)
+                        ).slice(0, 50);
+                    },
+                    get filteredTotal() {
+                        if (!this.search) return this.employees.length;
+                        const q = this.search.toLowerCase();
+                        return this.employees.filter(emp =>
+                            emp.name.toLowerCase().includes(q) || emp.role.toLowerCase().includes(q)
+                        ).length;
+                    },
+                    handleSearch(val) {
+                        clearTimeout(this.debounceTimer);
+                        this.debounceTimer = setTimeout(() => { this.search = val; }, 200);
+                    },
+                    init() {
+                        let selected = this.employees.find(emp => emp.id == this.selectedId);
+                        if (selected) {
+                            this.selectedName = selected.name + ' (' + selected.role + ')';
+                        }
+                    },
+                    selectEmployee(emp) {
+                        this.selectedId = emp.id;
+                        this.selectedName = emp.name + ' (' + emp.role + ')';
+                        this.open = false;
+                        this.search = '';
+                        this.$refs.searchInput.value = '';
+                    },
+                    toggleOpen() {
+                        this.open = !this.open;
+                        if (this.open) {
+                            this.$nextTick(() => this.$refs.searchInput.focus());
+                        }
+                    }
+                }" @click.outside="open = false" style="position: relative;">
+
+                    {{-- Hidden input for form submission --}}
+                    <input type="hidden" name="employee_id" :value="selectedId" :required="assignmentType === 'individual'">
+
+                    {{-- Trigger button --}}
+                    <div @click="toggleOpen()"
+                         class="form-input"
+                         style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.03);">
+                        <span x-text="selectedName || 'Select assignee…'" :style="!selectedId ? 'color: var(--text-muted);' : 'color: var(--text-primary);'"></span>
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="transition: transform 0.2s;" :style="open ? 'transform: rotate(180deg);' : ''">
+                            <path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+
+                    {{-- Dropdown card --}}
+                    <div x-show="open"
+                         x-transition
+                         style="position: absolute; top: 100%; left: 0; right: 0; z-index: 50; margin-top: 6px; background: var(--bg-surface); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); overflow: hidden; display: flex; flex-direction: column; max-height: 280px;">
+
+                        {{-- Search input — uses oninput with debounce, NOT x-model to avoid per-keystroke reactivity --}}
+                        <div style="padding: 8px; border-bottom: 1px solid var(--border-subtle); display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.02);">
+                            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="color: var(--text-muted); margin-left: 4px; flex-shrink: 0;">
+                                <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <input type="text"
+                                   x-ref="searchInput"
+                                   @input="handleSearch($event.target.value)"
+                                   @keydown.escape="open = false"
+                                   placeholder="Search developer…"
+                                   autocomplete="off"
+                                   style="width: 100%; border: none; background: transparent; font-size: 13px; color: var(--text-primary); outline: none; padding: 4px 0;">
+                        </div>
+
+                        {{-- Options list --}}
+                        <div style="overflow-y: auto; flex: 1;">
+                            <template x-for="emp in filteredEmployees" :key="emp.id">
+                                <div @click="selectEmployee(emp)"
+                                     style="padding: 10px 14px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; transition: background 0.15s;"
+                                     :style="selectedId == emp.id ? 'background: rgba(99,102,241,0.15); font-weight: 500;' : ''"
+                                     @mouseenter="$el.style.background = 'rgba(99,102,241,0.08)'"
+                                     @mouseleave="$el.style.background = (selectedId == emp.id ? 'rgba(99,102,241,0.15)' : 'transparent')">
+                                    <span style="color: var(--text-primary); font-size: 13.5px;" x-text="emp.name"></span>
+                                    <span style="color: var(--text-muted); font-size: 11px;" x-text="emp.role"></span>
+                                </div>
+                            </template>
+
+                            {{-- "More results" hint when total exceeds visible cap --}}
+                            <div x-show="filteredTotal > 50"
+                                 style="padding: 8px 14px; font-size: 11.5px; color: var(--text-muted); border-top: 1px solid var(--border-subtle); background: rgba(99,102,241,.04); text-align:center;">
+                                <span x-text="'Showing 50 of ' + filteredTotal + ' — type more to narrow results'"></span>
+                            </div>
+
+                            <div x-show="filteredEmployees.length === 0" style="padding: 16px; text-align: center; color: var(--text-muted); font-size: 13px;">
+                                No developers found.
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 @error('employee_id')<p class="form-error">{{ $message }}</p>@enderror
             </div>
+
 
             {{-- Team Assignee --}}
             <div x-show="assignmentType === 'team'" x-transition style="display:flex; flex-direction:column; gap:16px;">

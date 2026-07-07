@@ -25,7 +25,7 @@
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th style="padding-left:24px;">Employee</th>
+                        <th style="padding-left:24px;">Subject</th>
                         <th>Generated</th>
                         <th>Summary</th>
                         <th style="text-align:center;">Strengths</th>
@@ -38,15 +38,37 @@
                     @forelse($reports as $report)
                         <tr>
                             <td style="padding-left:24px;">
-                                <div style="display:flex; align-items:center; gap:12px;">
-                                    <div class="avatar avatar-sm">
-                                        {{ strtoupper(substr($report->employee->name, 0, 2)) }}
+                                @if($report->employee)
+                                    <div style="display:flex; align-items:center; gap:12px;">
+                                        <div class="avatar avatar-sm">
+                                            {{ strtoupper(substr($report->employee->name, 0, 2)) }}
+                                        </div>
+                                        <div>
+                                            <p style="font-size:13.5px; font-weight:700; color:var(--text-primary); white-space:nowrap;">{{ $report->employee->name }}</p>
+                                            <p style="font-size:12px; color:var(--text-muted);">{{ $report->employee->role }}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p style="font-size:13.5px; font-weight:700; color:var(--text-primary); white-space:nowrap;">{{ $report->employee->name }}</p>
-                                        <p style="font-size:12px; color:var(--text-muted);">{{ $report->employee->role }}</p>
+                                @elseif($report->team)
+                                    <div style="display:flex; align-items:center; gap:12px;">
+                                        <div class="avatar avatar-sm" style="background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.25); display:flex; align-items:center; justify-content:center; color:#818cf8; font-size:14px;">
+                                            👥
+                                        </div>
+                                        <div>
+                                            <p style="font-size:13.5px; font-weight:700; color:var(--text-primary); white-space:nowrap;">{{ $report->team->name }}</p>
+                                            <p style="font-size:12px; color:var(--text-muted);">Project Team</p>
+                                        </div>
                                     </div>
-                                </div>
+                                @else
+                                    <div style="display:flex; align-items:center; gap:12px;">
+                                        <div class="avatar avatar-sm">
+                                            —
+                                        </div>
+                                        <div>
+                                            <p style="font-size:13.5px; font-weight:700; color:var(--text-primary); white-space:nowrap;">Deleted Subject</p>
+                                            <p style="font-size:12px; color:var(--text-muted);">—</p>
+                                        </div>
+                                    </div>
+                                @endif
                             </td>
                             <td>
                                 <span style="font-size:13px; color:var(--text-secondary);">{{ $report->created_at->format('M d, Y') }}</span>
@@ -67,8 +89,26 @@
                                 <p style="font-size:18px; font-weight:700; color:#60a5fa;">{{ count($report->suggestions) }}</p>
                                 <p style="font-size:11px; color:var(--text-muted);">Tips</p>
                             </td>
-                            <td style="text-align:right; padding-right:24px;">
-                                <a href="{{ route('ai.report.show', $report->employee) }}" class="btn-ghost" style="font-size:12px; padding:5px 10px;">View</a>
+                            <td style="text-align:right; padding-right:24px; white-space:nowrap;">
+                                <div style="display:inline-flex; align-items:center; gap:8px; justify-content:flex-end;">
+                                    @if($report->employee)
+                                        <a href="{{ route('ai.report.show', $report->employee) }}" class="btn-ghost" style="font-size:12px; padding:5px 10px;">View</a>
+                                    @elseif($report->team)
+                                        <a href="{{ route('ai.report.show_team', $report->team) }}" class="btn-ghost" style="font-size:12px; padding:5px 10px;">View</a>
+                                    @else
+                                        <button class="btn-ghost" style="font-size:12px; padding:5px 10px;" disabled>View</button>
+                                    @endif
+
+                                    <form action="{{ route('ai.report.destroy', $report) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this report?')" style="margin:0; display:inline;">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn-danger" style="font-size:12px; padding:5px 10px; cursor:pointer;" title="Delete Report">
+                                            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-linecap="round" stroke-linejoin="round"/>
+                                            </svg>
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     @empty

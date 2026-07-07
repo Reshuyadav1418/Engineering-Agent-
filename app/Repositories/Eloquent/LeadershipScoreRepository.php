@@ -13,15 +13,21 @@ class LeadershipScoreRepository implements LeadershipScoreRepositoryInterface
         return LeadershipScore::with('employee')->get();
     }
 
-    public function latestForAll(): Collection
+    public function latestForAll(?int $limit = null): Collection
     {
         $latestIds = LeadershipScore::selectRaw('MAX(id) as max_id')
             ->groupBy('employee_id')
             ->pluck('max_id');
 
-        return LeadershipScore::with('employee')
+        $query = LeadershipScore::with('employee')
             ->whereIn('id', $latestIds)
-            ->get();
+            ->orderByDesc('leadership_score');
+
+        if ($limit !== null) {
+            $query->limit($limit);
+        }
+
+        return $query->get();
     }
 
     public function find(int $id): ?LeadershipScore

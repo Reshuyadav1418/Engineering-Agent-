@@ -38,14 +38,29 @@ class VCSIntegrationService
         $this->reportRepository = $reportRepository;
     }
 
-    /**
-     * Sync VCS metrics for all employees across all active providers.
-     */
-    public function syncAll(): void
+    public function syncAll(bool $force = false): void
     {
         $employees = Employee::all();
 
         foreach ($employees as $employee) {
+            $isFake = str_contains($employee->email ?? '', '@seeddata.local');
+
+            if ($isFake) {
+                // Seed employees: only sync once, never re-sync
+                if (VcsMetric::where('employee_id', $employee->id)->exists()) {
+                    continue;
+                }
+            } elseif (!$force) {
+                // Real employees: skip if synced within the last hour to avoid timeout
+                $recentSync = VcsMetric::where('employee_id', $employee->id)
+                    ->where('last_synced_at', '>=', now()->subHour())
+                    ->exists();
+
+                if ($recentSync) {
+                    continue;
+                }
+            }
+
             $this->syncForEmployee($employee);
         }
     }
@@ -55,22 +70,34 @@ class VCSIntegrationService
      */
     public function syncForEmployee(Employee $employee): void
     {
-        $username = $employee->github_username ?: strtolower(str_replace(' ', '', $employee->name));
+        // Each provider may use a different username
+        $fallback       = strtolower(str_replace(' ', '', $employee->name));
+        $githubUsername = $employee->github_username ?: $fallback;
+        $gitlabUsername = $employee->gitlab_username  ?: $githubUsername; // fallback to github username
+        $bitbucketUsername = $githubUsername; // Bitbucket typically mirrors GitHub username
 
         // Get latest productivity score to scale simulated metrics
         $productivityScore = optional($employee->productivityScores()->latest('id')->first())->productivity_score ?? 5.0;
 
+        $isFake = str_contains($employee->email ?? '', '@seeddata.local');
+
         $providers = ['github', 'gitlab', 'bitbucket'];
 
         foreach ($providers as $provider) {
-            $metrics = [];
-            
+            $metrics  = [];
+            $username = match ($provider) {
+                'github'    => $githubUsername,
+                'gitlab'    => $gitlabUsername,
+                'bitbucket' => $bitbucketUsername,
+                default     => $githubUsername,
+            };
+
             if ($provider === 'github') {
-                $metrics = $this->githubService->sync($username, $productivityScore);
+                $metrics = $this->githubService->sync($username, $productivityScore, $isFake);
             } elseif ($provider === 'gitlab') {
-                $metrics = $this->gitlabService->sync($username, $productivityScore);
+                $metrics = $this->gitlabService->sync($username, $productivityScore, $isFake);
             } elseif ($provider === 'bitbucket') {
-                $metrics = $this->bitbucketService->sync($username, $productivityScore);
+                $metrics = $this->bitbucketService->sync($username, $productivityScore, $isFake);
             }
 
             VcsMetric::updateOrCreate(
@@ -82,6 +109,7 @@ class VCSIntegrationService
                     'git_username' => $username,
                     'commits' => $metrics['commits'] ?? 0,
                     'pull_requests' => $metrics['pull_requests'] ?? 0,
+                    'repositories' => $metrics['repositories'] ?? 0,
                     'reviews' => $metrics['reviews'] ?? 0,
                     'bugs_fixed' => $metrics['bugs_fixed'] ?? 0,
                     'deployments' => $metrics['deployments'] ?? 0,
@@ -107,17 +135,20 @@ class VCSIntegrationService
         $leadershipScore = $this->leadershipScoreService->generateForEmployee($employee, $productivityScore);
 
         // 3. Generate/Refresh AI Report
-        $tasksAssigned = $employee->tasks->count();
-        $tasksCompleted = $employee->tasks->where('status', 'Completed')->count();
-        $completionRate = $tasksAssigned ? round(($tasksCompleted / $tasksAssigned) * 100, 2) : 0;
+        $individualTasksCount = $employee->tasks->count();
+        $teamTasksCount = $employee->taskMembers->count();
+        $teamContribution = $productivityScore->team_contribution ?? 0;
+        $productivityVal = $productivityScore->productivity_score ?? 0;
+        $leadershipVal = $leadershipScore->leadership_score ?? 0;
 
         try {
             $analysis = $this->analysisService->generateReport(
                 $employee->name,
-                $tasksCompleted,
-                $completionRate,
-                $productivityScore->productivity_score,
-                $leadershipScore->leadership_score
+                $individualTasksCount,
+                $teamTasksCount,
+                $teamContribution,
+                $productivityVal,
+                $leadershipVal
             );
         } catch (\Throwable $e) {
             Log::warning('Ollama/AI offline during VCS sync recalculation: ' . $e->getMessage());

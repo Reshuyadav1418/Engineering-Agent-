@@ -231,6 +231,182 @@
         </div>{{-- /stat grid --}}
 
         {{-- ══════════════════════════════════════════════════════════
+             SECTION 1b — ATTENDANCE OVERVIEW WIDGET
+             ══════════════════════════════════════════════════════════ --}}
+
+        {{-- Inline styles for the attendance widget --}}
+        <style>
+            /* ── Attendance Ring ──────────────────────────────── */
+            .att-ring-wrap {
+                position: relative;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .att-ring-wrap svg { transform: rotate(-90deg); }
+            .att-ring-center {
+                position: absolute;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+            }
+            /* ── Attendance bar ───────────────────────────────── */
+            .att-bar-track {
+                height: 7px;
+                border-radius: 99px;
+                background: rgba(99,102,241,.07);
+                overflow: hidden;
+                flex: 1;
+            }
+            .att-bar-fill {
+                height: 100%;
+                border-radius: 99px;
+                transition: width .9s cubic-bezier(.4,0,.2,1);
+            }
+            /* ── Attendance card grid ─────────────────────────── */
+            .att-grid {
+                display: grid;
+                grid-template-columns: auto 1fr;
+                gap: 24px;
+                align-items: center;
+            }
+            @media(max-width:700px){ .att-grid { grid-template-columns: 1fr; } }
+        </style>
+
+        @php
+            $totalAtt      = $totalAttendanceToday;
+            $noData        = $totalAtt === 0;
+            /* SVG ring math — r=48, circumference=2π×48≈301.6 */
+            $circ          = 301.59;
+            $presentDash   = $noData ? 0 : round(($presentPct / 100) * $circ, 2);
+            $lateDash      = $noData ? 0 : round(($latePct    / 100) * $circ, 2);
+            $absentDash    = $noData ? 0 : round(($absentPct  / 100) * $circ, 2);
+        @endphp
+
+        <p class="ea-section-title" style="margin-top:28px;">Attendance</p>
+        <div class="ea-card ea-card-p" id="attendance-overview-widget" style="margin-bottom:24px;">
+
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; flex-wrap:wrap; gap:10px;">
+                <div>
+                    <h2 style="font-size:14px; font-weight:700; letter-spacing:-.02em;">📋 Today's Attendance</h2>
+                    <p style="font-size:11.5px; color:var(--muted); margin-top:2px;">
+                        {{ now()->format('l, d M Y') }}
+                        @if($noData)
+                            &nbsp;·&nbsp;<span style="color:var(--amber); font-weight:600;">No records logged yet</span>
+                        @else
+                            &nbsp;·&nbsp;<span style="font-weight:600; color:var(--text);">{{ $totalAtt }}</span> records
+                        @endif
+                    </p>
+                </div>
+                {{-- Live indicator dot --}}
+                <div style="display:flex; align-items:center; gap:7px; font-size:11px; font-weight:600; color:var(--green); background:rgba(34,197,94,.08); border:1px solid rgba(34,197,94,.2); border-radius:8px; padding:5px 12px;">
+                    <span style="width:7px; height:7px; border-radius:50%; background:var(--green); animation:pulse 2s infinite; display:inline-block;"></span>
+                    Live
+                </div>
+            </div>
+
+            <div class="att-grid">
+
+                {{-- ── Stacked Donut Ring ────────────────────────────────── --}}
+                <div style="display:flex; justify-content:center;">
+                    <div class="att-ring-wrap" style="width:136px; height:136px;">
+                        <svg width="136" height="136" viewBox="0 0 136 136">
+                            {{-- Track --}}
+                            <circle cx="68" cy="68" r="48"
+                                fill="none" stroke="rgba(99,102,241,.08)" stroke-width="14"/>
+                            {{-- Present (green) --}}
+                            <circle cx="68" cy="68" r="48"
+                                fill="none" stroke="#22c55e" stroke-width="14"
+                                stroke-dasharray="{{ $presentDash }} {{ $circ }}"
+                                stroke-dashoffset="0"
+                                stroke-linecap="round"/>
+                            {{-- Late (amber) — offset by present arc --}}
+                            <circle cx="68" cy="68" r="48"
+                                fill="none" stroke="#f59e0b" stroke-width="14"
+                                stroke-dasharray="{{ $lateDash }} {{ $circ }}"
+                                stroke-dashoffset="{{ -$presentDash }}"
+                                stroke-linecap="round"/>
+                            {{-- Absent (red) — offset by present + late arcs --}}
+                            <circle cx="68" cy="68" r="48"
+                                fill="none" stroke="#ef4444" stroke-width="14"
+                                stroke-dasharray="{{ $absentDash }} {{ $circ }}"
+                                stroke-dashoffset="{{ -($presentDash + $lateDash) }}"
+                                stroke-linecap="round"/>
+                        </svg>
+                        <div class="att-ring-center">
+                            @if($noData)
+                                <span style="font-size:11px; font-weight:600; color:var(--muted);">No data</span>
+                            @else
+                                <span style="font-size:26px; font-weight:800; letter-spacing:-.04em; color:var(--text); line-height:1;">{{ $presentPct }}<span style="font-size:13px; font-weight:600;">%</span></span>
+                                <span style="font-size:10px; font-weight:600; color:var(--muted); margin-top:2px;">Present</span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
+                {{-- ── Breakdown Bars ────────────────────────────────────── --}}
+                <div style="display:flex; flex-direction:column; gap:18px;">
+
+                    {{-- Present --}}
+                    <div>
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:7px;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span style="width:9px; height:9px; border-radius:50%; background:#22c55e; display:inline-block; box-shadow:0 0 6px rgba(34,197,94,.5);"></span>
+                                <span style="font-size:12.5px; font-weight:600; color:var(--text);">Present</span>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <span style="font-size:20px; font-weight:800; color:#22c55e; letter-spacing:-.03em;">{{ $presentToday }}</span>
+                                <span style="font-size:11px; font-weight:700; color:#22c55e; background:rgba(34,197,94,.1); border:1px solid rgba(34,197,94,.2); padding:2px 8px; border-radius:6px;">{{ $presentPct }}%</span>
+                            </div>
+                        </div>
+                        <div class="att-bar-track">
+                            <div class="att-bar-fill" style="width:{{ $presentPct }}%; background:linear-gradient(90deg,#16a34a,#22c55e);"></div>
+                        </div>
+                    </div>
+
+                    {{-- Late --}}
+                    <div>
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:7px;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span style="width:9px; height:9px; border-radius:50%; background:#f59e0b; display:inline-block; box-shadow:0 0 6px rgba(245,158,11,.5);"></span>
+                                <span style="font-size:12.5px; font-weight:600; color:var(--text);">Late</span>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <span style="font-size:20px; font-weight:800; color:#f59e0b; letter-spacing:-.03em;">{{ $lateToday }}</span>
+                                <span style="font-size:11px; font-weight:700; color:#f59e0b; background:rgba(245,158,11,.1); border:1px solid rgba(245,158,11,.2); padding:2px 8px; border-radius:6px;">{{ $latePct }}%</span>
+                            </div>
+                        </div>
+                        <div class="att-bar-track">
+                            <div class="att-bar-fill" style="width:{{ $latePct }}%; background:linear-gradient(90deg,#d97706,#f59e0b);"></div>
+                        </div>
+                    </div>
+
+                    {{-- Absent --}}
+                    <div>
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:7px;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span style="width:9px; height:9px; border-radius:50%; background:#ef4444; display:inline-block; box-shadow:0 0 6px rgba(239,68,68,.5);"></span>
+                                <span style="font-size:12.5px; font-weight:600; color:var(--text);">Absent</span>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <span style="font-size:20px; font-weight:800; color:#ef4444; letter-spacing:-.03em;">{{ $absentToday }}</span>
+                                <span style="font-size:11px; font-weight:700; color:#ef4444; background:rgba(239,68,68,.1); border:1px solid rgba(239,68,68,.2); padding:2px 8px; border-radius:6px;">{{ $absentPct }}%</span>
+                            </div>
+                        </div>
+                        <div class="att-bar-track">
+                            <div class="att-bar-fill" style="width:{{ $absentPct }}%; background:linear-gradient(90deg,#dc2626,#ef4444);"></div>
+                        </div>
+                    </div>
+
+                </div>{{-- /bars --}}
+
+            </div>{{-- /att-grid --}}
+
+        </div>{{-- /attendance-overview-widget --}}
+
+        {{-- ══════════════════════════════════════════════════════════
              SECTION 2 — CHARTS ROW 1: Productivity Trend + Leadership Distribution
              ══════════════════════════════════════════════════════════ --}}
 
@@ -423,7 +599,8 @@
                 </div>
                 <div style="padding:16px 22px; display:flex; flex-direction:column; gap:10px;">
                     @forelse($recentReports as $report)
-                        <a href="{{ route('ai.report.show', $report->employee_id) }}" class="ea-report-card" style="text-decoration:none; color:inherit; display:block;" id="report-{{ $report->id }}">
+                        @if($report->employee_id)
+                        <a href="{{ route('ai.report.show', ['employee' => $report->employee_id]) }}" class="ea-report-card" style="text-decoration:none; color:inherit; display:block;" id="report-{{ $report->id }}">
                             <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
                                 <img
                                     style="width:30px; height:30px; border-radius:8px; object-fit:cover;"
@@ -447,6 +624,7 @@
                                 </p>
                             @endif
                         </a>
+                        @endif
                     @empty
                         <div style="text-align:center; padding:40px 0; color:var(--muted);">
                             <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto 12px; opacity:.4;"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round"/></svg>

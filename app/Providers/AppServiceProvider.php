@@ -29,6 +29,10 @@ use App\Services\Contracts\AIAnalysisServiceInterface;
 use App\Services\AIAnalysisService;
 use App\Services\Contracts\TeamServiceInterface;
 use App\Services\TeamService;
+use App\Services\Contracts\TeamMetricsServiceInterface;
+use App\Services\TeamMetricsService;
+use App\Services\Contracts\ChatServiceInterface;
+use App\Services\ChatService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -48,6 +52,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(LeadershipScoreServiceInterface::class, LeadershipScoreService::class);
         $this->app->bind(AIAnalysisServiceInterface::class, AIAnalysisService::class);
         $this->app->bind(TeamServiceInterface::class, TeamService::class);
+        $this->app->bind(TeamMetricsServiceInterface::class, TeamMetricsService::class);
+        $this->app->bind(ChatServiceInterface::class, ChatService::class);
     }
 
     /**

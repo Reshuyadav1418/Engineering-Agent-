@@ -37,4 +37,29 @@ class TaskRepository implements TaskRepositoryInterface
             $task->delete();
         }
     }
+
+    public function paginated(int $perPage = 20, ?string $selectedMonth = null)
+    {
+        $query = Task::with(['employee', 'team', 'members.employee']);
+        
+        if ($selectedMonth) {
+            $start = \Carbon\Carbon::createFromFormat('Y-m', $selectedMonth)->startOfMonth()->toDateString();
+            $end = \Carbon\Carbon::createFromFormat('Y-m', $selectedMonth)->endOfMonth()->toDateString();
+            $query->whereBetween('assigned_date', [$start, $end]);
+        }
+        
+        return $query->latest('id')->paginate($perPage);
+    }
+
+    public function getAvailableMonths()
+    {
+        return Task::whereNotNull('assigned_date')
+            ->select('assigned_date')
+            ->distinct()
+            ->orderBy('assigned_date', 'desc')
+            ->pluck('assigned_date')
+            ->map(fn ($date) => $date instanceof \Carbon\Carbon ? $date->format('Y-m') : \Carbon\Carbon::parse($date)->format('Y-m'))
+            ->unique()
+            ->values();
+    }
 }

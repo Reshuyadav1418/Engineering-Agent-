@@ -6,7 +6,7 @@
     {{-- Top Navigation & Action --}}
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:28px; flex-wrap:wrap; gap:16px;">
         <div style="display:flex; align-items:center; gap:12px;">
-            <a href="{{ route('teams.index') }}" class="btn-back">
+            <a href="{{ route('teams.index') }}" class="btn-back">`
                 <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 12H5m7 7l-7-7 7-7"/></svg>
             </a>
             <div>

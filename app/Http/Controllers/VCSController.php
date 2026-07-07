@@ -28,9 +28,9 @@ class VCSController extends Controller
         $metrics = VcsMetric::with('employee')->get();
 
         $tokens = [
-            'github' => !empty(env('GITHUB_TOKEN')),
-            'gitlab' => !empty(env('GITLAB_TOKEN')),
-            'bitbucket' => !empty(env('BITBUCKET_TOKEN')),
+            'github'    => !empty(config('services.github.token')),
+            'gitlab'    => !empty(config('services.gitlab.token')),
+            'bitbucket' => !empty(config('services.bitbucket.token')),
         ];
 
         return view('vcs.index', compact('metrics', 'tokens'));
@@ -38,11 +38,23 @@ class VCSController extends Controller
 
     /**
      * Sync VCS metrics for all employees.
+     *
+     * By default only syncs employees not synced in the last hour to avoid
+     * hammering external APIs and hitting the PHP execution time limit.
+     * Pass ?force=1 in the request to force a full re-sync of everyone.
      */
     public function sync(Request $request)
     {
-        $this->vcsService->syncAll();
+        // Lift the PHP time limit for this long-running operation
+        set_time_limit(300); // 5 minutes max
 
-        return redirect()->back()->with('success', 'VCS Metrics synchronized successfully and developer scores updated.');
+        $force = (bool) $request->input('force', false);
+        $this->vcsService->syncAll(force: $force);
+
+        $msg = $force
+            ? 'Force-sync complete. All employee VCS metrics and scores updated.'
+            : 'VCS Metrics synchronized successfully and developer scores updated.';
+
+        return redirect()->back()->with('success', $msg);
     }
 }

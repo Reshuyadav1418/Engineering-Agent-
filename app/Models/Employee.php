@@ -14,7 +14,8 @@ class Employee extends Model
      'email', 
      'department',
       'role', 
-      'github_username'];
+      'github_username',
+      'gitlab_username'];
 
     public function tasks(): HasMany
     {
@@ -34,6 +35,11 @@ class Employee extends Model
     public function aiReports(): HasMany
     {
         return $this->hasMany(AIReport::class);
+    }
+
+    public function vcsAiReports(): HasMany
+    {
+        return $this->hasMany(VcsAiReport::class);
     }
 
     public function workingHours(): HasMany

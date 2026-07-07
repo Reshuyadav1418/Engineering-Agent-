@@ -185,6 +185,7 @@
                             Frequency (per wk) <span class="sort-arrow">↕</span>
                         </th>
                         <th style="padding:12px 16px; text-align:right; font-size:11.5px; font-weight:700; color:#f97316; letter-spacing:0.04em; white-space:nowrap;">Last Synced</th>
+                        <th style="padding:12px 16px; text-align:center; font-size:11.5px; font-weight:700; color:var(--text-muted); letter-spacing:0.04em; white-space:nowrap;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -199,7 +200,7 @@
                                     x-text="row.employee_name"></a>
                             </td>
                             <td style="padding:13px 16px;">
-                                <a :href="row.provider === 'github' ? 'https://github.com/' + row.git_username : (row.provider === 'gitlab' ? 'https://gitlab.com/' + row.git_username : 'https://bitbucket.org/' + row.git_username)"
+                                <a :href="row.provider === 'github' ? 'https://github.com/' + row.git_username : (row.provider === 'gitlab' ? '{{ rtrim(config('services.gitlab.url', 'https://gitlab.com'), '/') }}/' + row.git_username : 'https://bitbucket.org/' + row.git_username)"
                                     target="_blank"
                                     style="font-size:12.5px; font-family:monospace; color:#ec4899; font-weight:500; text-decoration:none;"
                                     @mouseenter="$el.style.textDecoration = 'underline'"
@@ -229,6 +230,15 @@
                             </td>
                             <td style="padding:13px 16px; text-align:right;">
                                 <span style="font-size:12.5px; color:var(--text-secondary);" x-text="row.last_synced"></span>
+                            </td>
+                            <td style="padding:13px 16px; text-align:center;">
+                                <a :href="'/engineering-agent/vcs/' + row.employee_id + '/analysis'"
+                                   style="display:inline-flex; align-items:center; gap:5px; padding:5px 14px; background:linear-gradient(135deg,#6366f1,#7c3aed); color:#fff; font-size:12px; font-weight:600; border-radius:7px; text-decoration:none; cursor:pointer; box-shadow:0 2px 6px rgba(99,102,241,0.28); transition:all 0.15s;"
+                                   onmouseover="this.style.boxShadow='0 4px 14px rgba(99,102,241,0.45)'; this.style.transform='translateY(-1px)'"
+                                   onmouseout="this.style.boxShadow='0 2px 6px rgba(99,102,241,0.28)'; this.style.transform='none'">
+                                    <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                    View
+                                </a>
                             </td>
                         </tr>
                     </template>

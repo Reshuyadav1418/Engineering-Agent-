@@ -71,8 +71,8 @@
         @if($selectedMonth)
         <div style="margin-top:10px; display:flex; align-items:center; gap:8px;">
             <span style="font-size:12px; color:var(--text-muted);">
-                Showing <strong style="color:var(--text-primary);">{{ $tasks->count() }}</strong>
-                {{ Str::plural('task', $tasks->count()) }} registered in
+                Showing <strong style="color:var(--text-primary);">{{ $tasks->total() }}</strong>
+                {{ Str::plural('task', $tasks->total()) }} registered in
                 <strong style="color:#6366f1;">{{ \Carbon\Carbon::createFromFormat('Y-m', $selectedMonth)->format('F Y') }}</strong>
             </span>
             <a href="{{ route('tasks.index') }}" style="font-size:11px; color:#6366f1; text-decoration:none; display:inline-flex; align-items:center; gap:3px; font-weight:600;">
@@ -182,6 +182,57 @@
             </table>
         </div>
     </div>
+
+    {{-- Pagination Controls --}}
+    @if($tasks->total() > 0)
+    <div class="table-container" style="margin-top:16px; padding:14px 24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <span style="font-size:12px; color:var(--text-muted);">
+            Showing
+            <strong style="color:var(--text-primary);">{{ $tasks->firstItem() }}</strong>
+            –
+            <strong style="color:var(--text-primary);">{{ $tasks->lastItem() }}</strong>
+            of
+            <strong style="color:var(--text-primary);">{{ $tasks->total() }}</strong>
+            tasks
+        </span>
+        <div style="display:flex; align-items:center; gap:6px;">
+            {{-- Previous --}}
+            @if($tasks->onFirstPage())
+                <span style="display:inline-flex; align-items:center; gap:4px; padding:5px 12px; border-radius:8px; font-size:12px; font-weight:600; color:var(--text-muted); background:rgba(99,102,241,0.04); border:1px solid rgba(99,102,241,0.1); cursor:not-allowed;">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg>
+                    Prev
+                </span>
+            @else
+                <a href="{{ $tasks->withQueryString()->previousPageUrl() }}" style="display:inline-flex; align-items:center; gap:4px; padding:5px 12px; border-radius:8px; font-size:12px; font-weight:600; color:#818cf8; background:rgba(99,102,241,0.07); border:1px solid rgba(99,102,241,0.15); text-decoration:none; transition:all 0.15s;" onmouseover="this.style.background='rgba(99,102,241,0.14)'" onmouseout="this.style.background='rgba(99,102,241,0.07)'">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg>
+                    Prev
+                </a>
+            @endif
+
+            {{-- Page number pills (window of ±2 pages) --}}
+            @foreach($tasks->withQueryString()->getUrlRange(max(1, $tasks->currentPage()-2), min($tasks->lastPage(), $tasks->currentPage()+2)) as $page => $url)
+                @if($page === $tasks->currentPage())
+                    <span style="display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:8px; font-size:12px; font-weight:700; background:var(--accent,#6366f1); color:#fff; border:1px solid transparent; box-shadow:0 2px 8px rgba(99,102,241,0.25);">{{ $page }}</span>
+                @else
+                    <a href="{{ $url }}" style="display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:8px; font-size:12px; font-weight:600; color:var(--text-muted); background:rgba(99,102,241,0.05); border:1px solid rgba(99,102,241,0.12); text-decoration:none; transition:all 0.15s;" onmouseover="this.style.background='rgba(99,102,241,0.12)'; this.style.color='#818cf8'" onmouseout="this.style.background='rgba(99,102,241,0.05)'; this.style.color='var(--text-muted)'">{{ $page }}</a>
+                @endif
+            @endforeach
+
+            {{-- Next --}}
+            @if($tasks->hasMorePages())
+                <a href="{{ $tasks->withQueryString()->nextPageUrl() }}" style="display:inline-flex; align-items:center; gap:4px; padding:5px 12px; border-radius:8px; font-size:12px; font-weight:600; color:#818cf8; background:rgba(99,102,241,0.07); border:1px solid rgba(99,102,241,0.15); text-decoration:none; transition:all 0.15s;" onmouseover="this.style.background='rgba(99,102,241,0.14)'" onmouseout="this.style.background='rgba(99,102,241,0.07)'">
+                    Next
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+                </a>
+            @else
+                <span style="display:inline-flex; align-items:center; gap:4px; padding:5px 12px; border-radius:8px; font-size:12px; font-weight:600; color:var(--text-muted); background:rgba(99,102,241,0.04); border:1px solid rgba(99,102,241,0.1); cursor:not-allowed;">
+                    Next
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+                </span>
+            @endif
+        </div>
+    </div>
+    @endif
 
 </div>
 @endsection

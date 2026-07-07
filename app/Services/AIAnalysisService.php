@@ -33,4 +33,26 @@ class AIAnalysisService implements AIAnalysisServiceInterface
             $leadershipScore
         );
     }
+
+    public function generateTeamReport(
+        string $teamName,
+        int $membersCount,
+        int $completedTasks,
+        float $productivityScore,
+        float $leadershipScore,
+        float $completionRate,
+        float $consistencyScore,
+        float $collaborationScore
+    ): array {
+        return $this->ollamaProvider->generateOllamaTeamReport(
+            $teamName,
+            $membersCount,
+            $completedTasks,
+            $productivityScore,
+            $leadershipScore,
+            $completionRate,
+            $consistencyScore,
+            $collaborationScore
+        );
+    }
 }

@@ -16,27 +16,11 @@ class TaskController extends Controller
         $this->taskService = $taskService;
     }
 
-    /** Display a listing of the resource. */
     public function index(Request $request): View
     {
-        $allTasks = $this->taskService->all();
-
-        // Extract distinct months from assigned_date for the dropdown
-        $availableMonths = $allTasks
-            ->filter(fn ($t) => $t->assigned_date !== null)
-            ->map(fn ($t) => \Carbon\Carbon::parse($t->assigned_date)->format('Y-m'))
-            ->unique()
-            ->sort()
-            ->values();
-
-        // Apply month filter if selected
         $selectedMonth = $request->get('month');
-        $tasks = $selectedMonth
-            ? $allTasks->filter(fn ($t) =>
-                $t->assigned_date &&
-                \Carbon\Carbon::parse($t->assigned_date)->format('Y-m') === $selectedMonth
-              )->values()
-            : $allTasks;
+        $availableMonths = $this->taskService->getAvailableMonths();
+        $tasks = $this->taskService->paginated(20, $selectedMonth);
 
         return view('tasks.index', compact('tasks', 'availableMonths', 'selectedMonth'));
     }

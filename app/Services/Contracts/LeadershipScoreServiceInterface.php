@@ -10,5 +10,6 @@ use Illuminate\Database\Eloquent\Collection;
 interface LeadershipScoreServiceInterface
 {
     public function generateForEmployee(Employee $employee, ProductivityScore $productivityScore): LeadershipScore;
-    public function getLatestLeaderboard(): Collection;
+    public function getLatestLeaderboard(?int $limit = null): Collection;
+    public function calculateOnDemand(Employee $employee, float $productivityScore, $from, $to): float;
 }

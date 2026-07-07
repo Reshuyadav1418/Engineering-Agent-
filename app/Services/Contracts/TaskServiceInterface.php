@@ -21,4 +21,10 @@ interface TaskServiceInterface
 
     /** Delete a task */
     public function delete(int $id): bool;
+
+    /** Get paginated tasks with optional selected month */
+    public function paginated(int $perPage = 20, ?string $selectedMonth = null): \Illuminate\Contracts\Pagination\LengthAwarePaginator;
+
+    /** Get available months for task filter */
+    public function getAvailableMonths(): \Illuminate\Support\Collection;
 }

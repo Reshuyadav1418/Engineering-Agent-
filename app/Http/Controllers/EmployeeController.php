@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\EmployeeRequest;
 use App\Services\Contracts\EmployeeServiceInterface;
+use App\Services\Contracts\MetricsServiceInterface;
+use App\Services\Contracts\LeadershipScoreServiceInterface;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -22,8 +24,8 @@ class EmployeeController extends Controller
      */
     public function index(Request $request): View
     {
-        $filters = $request->only(['name', 'department', 'role', 'github_username']);
-        $employees = $this->employeeService->search($filters);
+        $filters = $request->only(['name', 'department', 'role', 'github_username', 'gitlab_username']);
+        $employees = $this->employeeService->search($filters, 20);
         return view('employees.index', compact('employees', 'filters'));
     }
 
@@ -41,13 +43,21 @@ class EmployeeController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:employees,email',
-            'department' => 'required|string|max:255',
-            'role' => 'required|string|max:255',
+            'name'            => 'required|string|max:255',
+            'email'           => 'required|email|unique:employees,email',
+            'department'      => 'required|string|max:255',
+            'role'            => 'required|string|max:255',
             'github_username' => 'nullable|string|max:255',
+            'gitlab_username' => 'nullable|string|max:255',
         ]);
-        $this->employeeService->create($data);
+        $employee = $this->employeeService->create($data);
+
+        // Auto-initialize scores so they appear on the dashboard immediately
+        $metricsService  = app(MetricsServiceInterface::class);
+        $leadershipService = app(LeadershipScoreServiceInterface::class);
+        $productivityScore = $metricsService->generateForEmployee($employee);
+        $leadershipService->generateForEmployee($employee, $productivityScore);
+
         return redirect()->route('employees.index')->with('success', 'Employee created successfully');
     }
 
@@ -75,11 +85,12 @@ class EmployeeController extends Controller
     public function update(Request $request, int $id): RedirectResponse
     {
         $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => "required|email|unique:employees,email,$id",
-            'department' => 'required|string|max:255',
-            'role' => 'required|string|max:255',
+            'name'            => 'required|string|max:255',
+            'email'           => "required|email|unique:employees,email,$id",
+            'department'      => 'required|string|max:255',
+            'role'            => 'required|string|max:255',
             'github_username' => 'nullable|string|max:255',
+            'gitlab_username' => 'nullable|string|max:255',
         ]);
         $this->employeeService->update($id, $data);
         return redirect()->route('employees.index')->with('success', 'Employee updated successfully');

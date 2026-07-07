@@ -214,7 +214,7 @@
                     {{ now()->format('D, M d, Y') }}
                 </div>
                 <div style="width:1px; height:18px; background:rgba(99,102,241,0.15);"></div>
-                
+            </div>{{-- /right flex container --}}
         </header>
 
         {{-- Main Content --}}
@@ -223,6 +223,8 @@
         </main>
     </div>
 </div>
+
+<x-chatbot />
 
 @yield('scripts')
 </body>

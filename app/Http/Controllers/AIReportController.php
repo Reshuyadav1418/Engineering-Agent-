@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Employee;
+use App\Models\Team;
 use App\Repositories\Contracts\AIReportRepositoryInterface;
 use App\Services\Contracts\AIAnalysisServiceInterface;
 use Illuminate\Http\RedirectResponse;
@@ -91,5 +92,49 @@ class AIReportController extends Controller
         ]);
 
         return redirect()->route('ai.report.show', $employee)->with('success', 'AI report generated successfully.');
+    }
+
+    public function showTeam(Team $team): View
+    {
+        $report = $this->reportRepository->latestForTeam($team->id);
+        
+        $teamMetricsService = app(\App\Services\Contracts\TeamMetricsServiceInterface::class);
+        $metrics = $teamMetricsService->getTeamMetrics($team);
+
+        return view('ai_reports.show_team', compact('team', 'report', 'metrics'));
+    }
+
+    public function generateTeam(Team $team): RedirectResponse
+    {
+        $teamMetricsService = app(\App\Services\Contracts\TeamMetricsServiceInterface::class);
+        $metrics = $teamMetricsService->getTeamMetrics($team);
+
+        $analysis = $this->analysisService->generateTeamReport(
+            $team->name,
+            $metrics['members_count'],
+            $metrics['completed_tasks'],
+            $metrics['productivity_score'],
+            $metrics['leadership_score'],
+            $metrics['team_completion_rate'],
+            $metrics['team_consistency'],
+            $metrics['team_collaboration']
+        );
+
+        $this->reportRepository->create([
+            'team_id' => $team->id,
+            'summary' => $analysis['summary'] ?? '',
+            'strengths' => $analysis['strengths'] ?? [],
+            'weaknesses' => $analysis['weaknesses'] ?? [],
+            'suggestions' => $analysis['suggestions'] ?? [],
+            'created_at' => now(),
+        ]);
+
+        return redirect()->route('ai.report.show_team', $team)->with('success', 'Team AI report generated successfully.');
+    }
+
+    public function destroy(int $id): RedirectResponse
+    {
+        $this->reportRepository->delete($id);
+        return redirect()->route('ai.report.index')->with('success', 'AI report deleted successfully.');
     }
 }

@@ -39,9 +39,57 @@ class LeadershipScoreService implements LeadershipScoreServiceInterface
         ]);
     }
 
-    public function getLatestLeaderboard(): Collection
+    public function getLatestLeaderboard(?int $limit = null): Collection
     {
-        return $this->leadershipRepository->latestForAll()->sortByDesc('leadership_score');
+        return $this->leadershipRepository->latestForAll($limit);
+    }
+
+    /**
+     * Calculate leadership score in-memory for a specific date period (not persisted).
+     *
+     * @param  Employee            $employee
+     * @param  float               $productivityScore  pre-computed for the same period
+     * @param  \Carbon\Carbon|null $from
+     * @param  \Carbon\Carbon|null $to
+     * @return float  0–10
+     */
+    public function calculateOnDemand(Employee $employee, float $productivityScore, $from, $to): float
+    {
+        // Use pre-loaded collections — NO new SQL queries per employee
+        $periodTasks = $employee->tasks->filter(function ($t) use ($from, $to) {
+            $d = $t->assigned_date ? \Carbon\Carbon::parse($t->assigned_date) : null;
+            return $d && (!$from || $d->gte($from)) && (!$to || $d->lte($to));
+        });
+        $periodTeamMembers = $employee->taskMembers->filter(function ($tm) use ($from, $to) {
+            $d = $tm->started_at ?? $tm->created_at;
+            $d = $d ? \Carbon\Carbon::parse($d) : null;
+            return $d && (!$from || $d->gte($from)) && (!$to || $d->lte($to));
+        });
+
+        $totalAssigned  = $periodTasks->count() + $periodTeamMembers->count();
+        $totalCompleted = $periodTasks->where('status', 'Completed')->count()
+            + $periodTeamMembers->where('status', 'Completed')->count();
+
+        $completionRate       = $totalAssigned > 0 ? ($totalCompleted / $totalAssigned) * 100 : 0;
+        $completionRateScore  = $completionRate / 10;
+
+        // Consistency: scale by number of completed tasks in period
+        $totalCompletedAll = $totalCompleted;
+        $consistencyScore  = min(10.0, max(0.0, round($totalCompletedAll / 2, 2)));
+
+        // Collaboration: use pre-loaded teams collection — no extra query
+        $collabPoints       = ($periodTasks->count() * 0.5) + ($employee->teams->count() * 1.5) + ($periodTeamMembers->count() * 1.5);
+        $collaborationScore = min(10.0, max(0.0, round($collabPoints, 2)));
+
+        $leadershipScore = round(
+            ($productivityScore  * 0.4)
+            + ($completionRateScore * 0.3)
+            + ($consistencyScore    * 0.2)
+            + ($collaborationScore  * 0.1),
+            2
+        );
+
+        return min(10.0, max(0.0, $leadershipScore));
     }
 
     protected function estimateConsistencyScore(Employee $employee): float

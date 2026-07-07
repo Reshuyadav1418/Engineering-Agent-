@@ -125,7 +125,7 @@ class WorkdeskIntegrationService
      */
     public function getTasks(): array
     {
-        return \App\Models\Task::all()->map(function($task) {
+        return \App\Models\Task::latest('id')->take(500)->get()->map(function($task) {
             return [
                 'id' => $task->id,
                 'employee_id' => $task->employee_id,
@@ -149,7 +149,7 @@ class WorkdeskIntegrationService
      */
     public function getWorkingHours(): array
     {
-        return \App\Models\WorkingHour::all()->map(function($wh) {
+        return \App\Models\WorkingHour::latest('id')->take(500)->get()->map(function($wh) {
             return [
                 'id' => $wh->id,
                 'employee_id' => $wh->employee_id,
@@ -168,7 +168,7 @@ class WorkdeskIntegrationService
      */
     public function getAttendance(): array
     {
-        return \App\Models\Attendance::all()->map(function($att) {
+        return \App\Models\Attendance::latest('id')->take(500)->get()->map(function($att) {
             return [
                 'id' => $att->id,
                 'employee_id' => $att->employee_id,

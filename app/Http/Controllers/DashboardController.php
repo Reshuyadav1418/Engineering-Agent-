@@ -7,6 +7,7 @@ use App\Services\Contracts\TaskServiceInterface;
 use App\Services\Contracts\LeadershipScoreServiceInterface;
 use App\Models\Employee;
 use App\Models\ProductivityScore;
+use App\Models\Attendance;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -27,17 +28,14 @@ class DashboardController extends Controller
 
     public function index(): View
     {
-        $allTasks     = $this->taskService->all();
-        $allEmployees = $this->employeeService->all();
+        $employeesCount  = \App\Models\Employee::count();
+        $tasksCount      = \App\Models\Task::count();
+        $completedTasks  = \App\Models\Task::where('status', 'Completed')->count();
+        $inProgressTasks = \App\Models\Task::where('status', 'In Progress')->count();
+        $pendingTasks    = \App\Models\Task::where('status', 'Pending')->count();
 
-        $employeesCount  = $allEmployees->count();
-        $tasksCount      = $allTasks->count();
-        $completedTasks  = $allTasks->where('status', 'Completed')->count();
-        $inProgressTasks = $allTasks->where('status', 'In Progress')->count();
-        $pendingTasks    = $allTasks->where('status', 'Pending')->count();
-
-        // Recent tasks (for the "Recent Tasks" panel) – eager-loaded employee
-        $recentTasks = $allTasks->sortByDesc('id')->take(5);
+        // Recent tasks (for the "Recent Tasks" panel) – eager-loaded employee and team
+        $recentTasks = \App\Models\Task::with(['employee', 'team'])->latest('id')->take(5)->get();
 
         // ── Average Productivity ──────────────────────────────────────────────
         // Pulls from the productivity_scores table; falls back to 0 if no data.
@@ -52,7 +50,9 @@ class DashboardController extends Controller
 
         // ── Productivity Trend (last 6 months) ────────────────────────────────
         // Groups average productivity_score by month of updated_at.
-        $trendRecords = ProductivityScore::all()
+        $trendRecords = ProductivityScore::select('productivity_score', 'updated_at')
+            ->where('updated_at', '>=', \Carbon\Carbon::now()->subMonths(5)->startOfMonth())
+            ->get()
             ->groupBy(function ($score) {
                 return $score->updated_at ? $score->updated_at->format('M Y') : '';
             })
@@ -73,25 +73,27 @@ class DashboardController extends Controller
             $productivityTrendData[] = $trendRecords->has($label) ? $trendRecords->get($label)->avg_score : 0.0;
         }
 
-        // ── Leadership Distribution (score buckets) ───────────────────────────
+        // ── Leadership Distribution (score brackets) ───────────────────────────
         // Groups employees into score brackets for a doughnut/pie chart.
-        $leaderboard = $this->leadershipScoreService->getLatestLeaderboard();
+        $latestScoreIds = \App\Models\LeadershipScore::selectRaw('MAX(id) as max_id')
+            ->groupBy('employee_id')
+            ->pluck('max_id');
 
-        $leadershipBuckets = ['Elite (8-10)' => 0, 'Strong (6-8)' => 0, 'Growing (4-6)' => 0, 'Emerging (0-4)' => 0];
-        foreach ($leaderboard as $entry) {
-            $s = $entry->leadership_score;
-            if ($s >= 8)      $leadershipBuckets['Elite (8-10)']++;
-            elseif ($s >= 6)  $leadershipBuckets['Strong (6-8)']++;
-            elseif ($s >= 4)  $leadershipBuckets['Growing (4-6)']++;
-            else              $leadershipBuckets['Emerging (0-4)']++;
-        }
+        $leadershipBuckets = [
+            'Elite (8-10)' => \App\Models\LeadershipScore::whereIn('id', $latestScoreIds)->where('leadership_score', '>=', 8)->count(),
+            'Strong (6-8)' => \App\Models\LeadershipScore::whereIn('id', $latestScoreIds)->whereBetween('leadership_score', [6, 7.999])->count(),
+            'Growing (4-6)' => \App\Models\LeadershipScore::whereIn('id', $latestScoreIds)->whereBetween('leadership_score', [4, 5.999])->count(),
+            'Emerging (0-4)' => \App\Models\LeadershipScore::whereIn('id', $latestScoreIds)->where('leadership_score', '<', 4)->count(),
+        ];
 
         // ── Task Completion Trend (last 6 months) ────────────────────────────
         // Counts completed tasks grouped by month of completed_date.
-        $taskCompletionRaw = $allTasks
-            ->where('status', 'Completed')
-            ->filter(fn ($t) => $t->completed_date !== null)
-            ->groupBy(fn ($t) => $t->completed_date->format('M Y'))
+        $taskCompletionRaw = \App\Models\Task::where('status', 'Completed')
+            ->whereNotNull('completed_date')
+            ->where('completed_date', '>=', \Carbon\Carbon::now()->subMonths(5)->startOfMonth())
+            ->select('completed_date')
+            ->get()
+            ->groupBy(fn ($t) => \Carbon\Carbon::parse($t->completed_date)->format('M Y'))
             ->map->count();
 
         $taskCompletionLabels = [];
@@ -104,13 +106,24 @@ class DashboardController extends Controller
         }
 
         // ── Leaderboard (top 5 for dashboard widget) ─────────────────────────
-        $topLeaderboard = $leaderboard->take(5);
+        $topLeaderboard = $this->leadershipScoreService->getLatestLeaderboard(5);
 
         // ── Recent AI Reports ─────────────────────────────────────────────────
         $recentReports = \App\Models\AIReport::with('employee')
             ->latest()
             ->take(4)
             ->get();
+
+        // ── Today's Attendance Overview ───────────────────────────────────────
+        $today = \Carbon\Carbon::today();
+        $todayAttendance = Attendance::where('attendance_date', $today)->get();
+        $totalAttendanceToday = $todayAttendance->count();
+        $presentToday        = $todayAttendance->where('status', 'Present')->count();
+        $lateToday           = $todayAttendance->where('status', 'Late')->count();
+        $absentToday         = $todayAttendance->where('status', 'Absent')->count();
+        $presentPct  = $totalAttendanceToday > 0 ? round(($presentToday  / $totalAttendanceToday) * 100) : 0;
+        $latePct     = $totalAttendanceToday > 0 ? round(($lateToday     / $totalAttendanceToday) * 100) : 0;
+        $absentPct   = $totalAttendanceToday > 0 ? round(($absentToday   / $totalAttendanceToday) * 100) : 0;
 
         return view('dashboard', compact(
             'employeesCount',
@@ -129,6 +142,13 @@ class DashboardController extends Controller
             'taskCompletionData',
             'topLeaderboard',
             'recentReports',
+            'totalAttendanceToday',
+            'presentToday',
+            'lateToday',
+            'absentToday',
+            'presentPct',
+            'latePct',
+            'absentPct',
         ));
     }
 }
